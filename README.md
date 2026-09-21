@@ -254,3 +254,8 @@ you're presenting this as a capstone:
 If you want, the next concrete step I'd suggest is deciding which of those
 three you actually need for your deadline/rubric, and I can build that
 module next using the same real-data standard as this one.
+
+
+
+
+DEPLOYMENT LINK: https://midicaldio.onrender.com
