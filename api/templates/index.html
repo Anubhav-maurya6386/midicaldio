@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MediScope — symptom checker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#16241d;
+    --paper:#efede4;
+    --paper-raised:#f7f5ec;
+    --amber:#b8863b;
+    --amber-deep:#8f6428;
+    --sage:#6f8768;
+    --brick:#9c4a3c;
+    --line: rgba(22,36,29,0.14);
+    --shadow: 0 1px 0 rgba(22,36,29,0.06);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"IBM Plex Sans", sans-serif;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{
+    font-family:"Fraunces", serif;
+    font-weight:600;
+    margin:0;
+    letter-spacing:-0.01em;
+  }
+  .wrap{max-width:840px;margin:0 auto;padding:0 28px;}
+
+  header.top{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:28px 0 0;
+  }
+  .mark{display:flex;align-items:center;gap:10px;}
+  .mark svg{display:block;}
+  .mark span{font-family:"Fraunces", serif;font-size:20px;font-weight:600;}
+  nav.top-nav a{
+    color:var(--ink); opacity:0.65; text-decoration:none; font-size:14px;
+    margin-left:22px; border-bottom:1px solid transparent;
+  }
+  nav.top-nav a:hover{opacity:1;border-bottom-color:var(--line);}
+
+  .hero{padding:56px 0 20px;}
+  .hero h1{font-size:44px; line-height:1.08; max-width:11ch;}
+  .hero p.lede{
+    max-width:46ch; font-size:17px; color:rgba(22,36,29,0.72); margin:16px 0 0;
+  }
+
+  .picker{
+    margin-top:36px;
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:22px 24px 24px;
+  }
+  .picker label{
+    display:block; font-size:13px; color:rgba(22,36,29,0.6); margin-bottom:10px;
+  }
+  .chip-field{
+    display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    border-bottom:1px solid var(--line);
+    padding-bottom:14px; margin-bottom:14px;
+    min-height:40px;
+  }
+  .chip{
+    background:var(--ink); color:var(--paper-raised);
+    padding:6px 10px 6px 12px; border-radius:999px; font-size:13.5px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .chip button{
+    all:unset; cursor:pointer; opacity:0.6; font-size:14px; line-height:1;
+  }
+  .chip button:hover{opacity:1;}
+  #symptom-input{
+    flex:1; min-width:180px; border:none; background:transparent; outline:none;
+    font-family:"IBM Plex Sans", sans-serif; font-size:15px; color:var(--ink);
+    padding:6px 2px;
+  }
+  #symptom-input::placeholder{color:rgba(22,36,29,0.38);}
+
+  .suggestions{
+    position:relative;
+  }
+  .suggestion-list{
+    position:absolute; top:2px; left:0; right:0;
+    background:var(--paper-raised); border:1px solid var(--line);
+    border-radius:4px; max-height:220px; overflow-y:auto; z-index:5;
+    box-shadow:0 8px 20px rgba(22,36,29,0.12);
+  }
+  .suggestion-list div{
+    padding:9px 14px; font-size:14px; cursor:pointer;
+  }
+  .suggestion-list div:hover, .suggestion-list div.active{
+    background:var(--paper); 
+  }
+
+  .picker-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+  .hint{font-size:13px;color:rgba(22,36,29,0.5);}
+
+  button.primary{
+    all:unset; cursor:pointer;
+    background:var(--ink); color:var(--paper-raised);
+    padding:12px 22px; border-radius:3px; font-size:15px; font-weight:500;
+    transition:background 0.15s ease;
+  }
+  button.primary:hover{background:var(--amber-deep);}
+  button.primary:disabled{opacity:0.4; cursor:default;}
+  button.primary:focus-visible, .chip button:focus-visible, #symptom-input:focus-visible {
+    outline:2px solid var(--amber); outline-offset:2px;
+  }
+
+  /* Click-based symptom picker: an alternative to typing */
+  .click-picker{margin-top:18px;}
+  .click-label{font-size:13px; color:rgba(22,36,29,0.55); margin-bottom:10px;}
+  .symptom-grid{
+    display:flex; flex-wrap:wrap; gap:8px;
+  }
+  .symptom-btn{
+    all:unset; cursor:pointer;
+    font-family:"IBM Plex Sans", sans-serif; font-size:14px;
+    padding:8px 14px; border-radius:999px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    color:var(--ink);
+    transition:background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  }
+  .symptom-btn:hover{border-color:var(--amber);}
+  .symptom-btn.selected{
+    background:var(--ink); color:var(--paper-raised); border-color:var(--ink);
+  }
+  .symptom-btn:focus-visible{outline:2px solid var(--amber); outline-offset:2px;}
+
+  .browse-toggle{
+    all:unset; cursor:pointer;
+    display:inline-block; margin-top:14px;
+    font-size:13.5px; color:var(--amber-deep); font-weight:500;
+    border-bottom:1px solid rgba(184,134,59,0.4);
+  }
+  .browse-toggle:hover{border-bottom-color:var(--amber-deep);}
+
+  .all-symptoms-panel{
+    display:none;
+    margin-top:14px; padding:16px;
+    border:1px solid var(--line); border-radius:4px;
+    background:var(--paper);
+    max-height:280px; overflow-y:auto;
+  }
+  .all-symptoms-panel.open{display:block;}
+
+  .error-banner{
+    margin-top:14px; padding:11px 14px; border-radius:3px;
+    background:rgba(156,74,60,0.10); color:var(--brick); font-size:14px;
+    display:none;
+  }
+
+  /* Result card, styled like an index / prescription card */
+  #result{
+    margin:34px 0 60px; display:none;
+  }
+  .card{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:4px;
+    position:relative;
+    overflow:hidden;
+  }
+  .card::before{
+    content:"";
+    position:absolute; left:0; top:0; bottom:0; width:6px;
+    background:var(--amber);
+  }
+  .card-inner{padding:30px 30px 26px 34px;}
+  .result-head{
+    display:flex; justify-content:space-between; align-items:flex-start; gap:16px;
+    flex-wrap:wrap;
+    padding-bottom:18px; border-bottom:1px solid var(--line); margin-bottom:20px;
+  }
+  .result-head h2{font-size:26px;}
+  .confidence{
+    text-align:right; white-space:nowrap;
+  }
+  .confidence .num{font-family:"Fraunces", serif; font-size:26px; color:var(--amber-deep);}
+  .confidence .label{font-size:12px; color:rgba(22,36,29,0.55); margin-top:2px;}
+
+  .alt-predictions{font-size:13px; color:rgba(22,36,29,0.55); margin-top:6px;}
+
+  .desc{font-size:15.5px; color:rgba(22,36,29,0.85); margin-bottom:22px;}
+
+  .grid{
+    display:grid; grid-template-columns:1fr 1fr; gap:24px 30px;
+  }
+  .field h3{font-size:14px; text-transform:none; color:var(--ink); margin-bottom:10px;
+    border-bottom:1px solid var(--line); padding-bottom:6px;}
+  .field ul{margin:0;padding:0;list-style:none;}
+  .field li{
+    font-size:14.5px; padding:5px 0 5px 22px; position:relative; color:rgba(22,36,29,0.85);
+  }
+  .field.precautions li::before{content:"✓"; position:absolute; left:0; color:var(--sage); font-weight:600;}
+  .field.medications li::before{content:"●"; position:absolute; left:2px; top:8px; color:var(--amber); font-size:7px;}
+  .field.diet li::before{content:"●"; position:absolute; left:2px; top:8px; color:var(--sage); font-size:7px;}
+  .field.workout li::before{content:"●"; position:absolute; left:2px; top:8px; color:var(--brick); font-size:7px;}
+
+  .disclaimer{
+    margin-top:24px; padding:12px 14px; border-radius:3px;
+    background:rgba(184,134,59,0.12); color:var(--amber-deep); font-size:13px;
+  }
+
+  footer{
+    padding:30px 0 50px; font-size:13px; color:rgba(22,36,29,0.5);
+    border-top:1px solid var(--line);
+  }
+  footer a{color:inherit;}
+
+  @media (max-width:600px){
+    .hero h1{font-size:32px;}
+    .grid{grid-template-columns:1fr;}
+    .wrap{padding:0 18px;}
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important;}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="mark">
+      <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+        <circle cx="13" cy="13" r="12" stroke="#16241d" stroke-width="1.4"/>
+        <path d="M13 7v12M7 13h12" stroke="#b8863b" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>
+      <span>MediScope</span>
+    </div>
+    <nav class="top-nav">
+      <a href="/docs" target="_blank">API docs</a>
+      <a href="/api/health" target="_blank">Model status</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <h1>Tell us what<br/>you're feeling.</h1>
+    <p class="lede">Add your symptoms below. MediScope compares them against patterns learned from thousands of clinical records and returns a likely condition with precautions, medication, diet, and activity guidance.</p>
+
+    <div class="picker">
+      <label for="symptom-input">Symptoms</label>
+      <div class="chip-field" id="chip-field">
+        <div class="suggestions" style="flex:1; min-width:180px;">
+          <input id="symptom-input" type="text" placeholder="Start typing, e.g. headache" autocomplete="off" />
+          <div class="suggestion-list" id="suggestion-list" style="display:none;"></div>
+        </div>
+      </div>
+
+      <div class="click-picker">
+        <div class="click-label">Or just tap what you're feeling — no typing needed</div>
+        <div class="symptom-grid" id="quick-symptoms"></div>
+        <button type="button" class="browse-toggle" id="browse-toggle">Show all symptoms</button>
+        <div class="all-symptoms-panel" id="all-symptoms-panel">
+          <div class="symptom-grid" id="all-symptoms"></div>
+        </div>
+      </div>
+
+      <div class="picker-footer">
+        <span class="hint" id="hint-text">Add at least one symptom to continue.</span>
+        <button class="primary" id="submit-btn" disabled>Check symptoms</button>
+      </div>
+      <div class="error-banner" id="error-banner"></div>
+    </div>
+  </section>
+
+  <section id="result">
+    <div class="card">
+      <div class="card-inner">
+        <div class="result-head">
+          <div>
+            <h2 id="disease-name"></h2>
+            <div class="alt-predictions" id="alt-predictions"></div>
+          </div>
+          <div class="confidence">
+            <div class="num" id="confidence-num"></div>
+            <div class="label">model confidence</div>
+          </div>
+        </div>
+
+        <p class="desc" id="disease-desc"></p>
+
+        <div class="grid">
+          <div class="field precautions">
+            <h3>Precautions</h3>
+            <ul id="list-precautions"></ul>
+          </div>
+          <div class="field medications">
+            <h3>Common medications</h3>
+            <ul id="list-medications"></ul>
+          </div>
+          <div class="field diet">
+            <h3>Suggested diet</h3>
+            <ul id="list-diet"></ul>
+          </div>
+          <div class="field workout">
+            <h3>Suggested activity</h3>
+            <ul id="list-workout"></ul>
+          </div>
+        </div>
+
+        <div class="disclaimer" id="disclaimer-text"></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    MediScope is a machine-learning teaching project. It is not a medical device and does not replace professional diagnosis. Model trained on a public symptom–disease dataset.
+  </footer>
+</div>
+
+<script>
+const chipField = document.getElementById('chip-field');
+const input = document.getElementById('symptom-input');
+const suggestionList = document.getElementById('suggestion-list');
+const submitBtn = document.getElementById('submit-btn');
+const hintText = document.getElementById('hint-text');
+const errorBanner = document.getElementById('error-banner');
+const quickSymptomsEl = document.getElementById('quick-symptoms');
+const allSymptomsEl = document.getElementById('all-symptoms');
+const browseToggle = document.getElementById('browse-toggle');
+const allSymptomsPanel = document.getElementById('all-symptoms-panel');
+
+// The dataset's most frequently occurring symptoms, computed from the real
+// training data (not guessed) — shown up front so most people never need
+// to type or scroll at all.
+const QUICK_SYMPTOMS = [
+  'fatigue', 'vomiting', 'high_fever', 'loss_of_appetite', 'nausea',
+  'headache', 'abdominal_pain', 'yellowish_skin', 'chills', 'skin_rash',
+  'chest_pain', 'joint_pain', 'itching', 'cough', 'stomach_pain', 'dizziness'
+];
+
+let allSymptoms = [];
+let selected = [];
+let activeIndex = -1;
+
+fetch('/api/symptoms').then(r => r.json()).then(d => {
+  allSymptoms = d.symptoms;
+  renderSymptomButtons(quickSymptomsEl, QUICK_SYMPTOMS.filter(s => allSymptoms.includes(s)));
+  renderSymptomButtons(allSymptomsEl, [...allSymptoms].sort());
+});
+
+function renderSymptomButtons(container, list){
+  container.innerHTML = '';
+  list.forEach(s => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'symptom-btn' + (selected.includes(s) ? ' selected' : '');
+    btn.textContent = s.replace(/_/g, ' ');
+    btn.dataset.symptom = s;
+    btn.onclick = () => toggleSymptom(s);
+    container.appendChild(btn);
+  });
+}
+
+function toggleSymptom(s){
+  if(selected.includes(s)){
+    selected = selected.filter(x => x !== s);
+  } else {
+    selected.push(s);
+  }
+  renderChips();
+}
+
+function updateButtonStates(){
+  document.querySelectorAll('.symptom-btn').forEach(btn => {
+    btn.classList.toggle('selected', selected.includes(btn.dataset.symptom));
+  });
+}
+
+browseToggle.addEventListener('click', () => {
+  const isOpen = allSymptomsPanel.classList.toggle('open');
+  browseToggle.textContent = isOpen ? 'Hide symptom list' : 'Show all symptoms';
+});
+
+function renderChips(){
+  chipField.querySelectorAll('.chip').forEach(c => c.remove());
+  selected.forEach((s, idx) => {
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    chip.innerHTML = `<span>${s.replace(/_/g,' ')}</span>`;
+    const btn = document.createElement('button');
+    btn.setAttribute('aria-label', 'Remove ' + s);
+    btn.textContent = '✕';
+    btn.onclick = () => { selected.splice(idx,1); renderChips(); };
+    chip.appendChild(btn);
+    chipField.insertBefore(chip, chipField.firstChild);
+  });
+  submitBtn.disabled = selected.length === 0;
+  hintText.textContent = selected.length === 0
+    ? 'Add at least one symptom to continue.'
+    : `${selected.length} symptom${selected.length>1?'s':''} added.`;
+  updateButtonStates();
+}
+
+function showSuggestions(){
+  const q = input.value.trim().toLowerCase().replace(/ /g,'_');
+  if(!q){ suggestionList.style.display='none'; return; }
+  const matches = allSymptoms
+    .filter(s => !selected.includes(s))
+    .filter(s => s.includes(q))
+    .slice(0, 8);
+  if(matches.length === 0){ suggestionList.style.display='none'; return; }
+  suggestionList.innerHTML = matches.map((s,i) =>
+    `<div data-symptom="${s}" class="${i===activeIndex?'active':''}">${s.replace(/_/g,' ')}</div>`
+  ).join('');
+  suggestionList.style.display='block';
+  suggestionList.querySelectorAll('div').forEach(el => {
+    el.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      addSymptom(el.dataset.symptom);
+    });
+  });
+}
+
+function addSymptom(s){
+  if(s && !selected.includes(s)){ selected.push(s); }
+  input.value = '';
+  activeIndex = -1;
+  suggestionList.style.display = 'none';
+  renderChips();
+  input.focus();
+}
+
+input.addEventListener('input', () => { activeIndex = -1; showSuggestions(); });
+input.addEventListener('keydown', (e) => {
+  const items = suggestionList.querySelectorAll('div');
+  if(e.key === 'ArrowDown' && items.length){
+    e.preventDefault();
+    activeIndex = Math.min(activeIndex+1, items.length-1);
+    showSuggestions();
+  } else if(e.key === 'ArrowUp' && items.length){
+    e.preventDefault();
+    activeIndex = Math.max(activeIndex-1, 0);
+    showSuggestions();
+  } else if(e.key === 'Enter'){
+    e.preventDefault();
+    if(activeIndex >= 0 && items[activeIndex]){
+      addSymptom(items[activeIndex].dataset.symptom);
+    } else {
+      const q = input.value.trim().toLowerCase().replace(/ /g,'_');
+      if(allSymptoms.includes(q)) addSymptom(q);
+    }
+  } else if(e.key === 'Backspace' && input.value === '' && selected.length){
+    selected.pop(); renderChips();
+  }
+});
+document.addEventListener('click', (e) => {
+  if(!chipField.contains(e.target)) suggestionList.style.display='none';
+});
+
+submitBtn.addEventListener('click', async () => {
+  errorBanner.style.display = 'none';
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Checking…';
+  try{
+    const res = await fetch('/api/predict', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({symptoms: selected, top_k: 3})
+    });
+    const data = await res.json();
+    if(!res.ok){ throw new Error(data.detail || 'Something went wrong.'); }
+    renderResult(data);
+  }catch(err){
+    errorBanner.textContent = err.message;
+    errorBanner.style.display = 'block';
+  }finally{
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Check symptoms';
+  }
+});
+
+function fillList(id, items){
+  const el = document.getElementById(id);
+  el.innerHTML = items.length
+    ? items.map(i => `<li>${i}</li>`).join('')
+    : '<li style="opacity:0.5;">No data available</li>';
+}
+
+function renderResult(data){
+  document.getElementById('disease-name').textContent = data.disease;
+  const top = data.top_predictions[0];
+  document.getElementById('confidence-num').textContent =
+    top.confidence !== null ? Math.round(top.confidence*100) + '%' : '—';
+
+  const alts = data.top_predictions.slice(1).filter(p => p.confidence > 0);
+  document.getElementById('alt-predictions').textContent = alts.length
+    ? 'Also considered: ' + alts.map(p => `${p.disease} (${Math.round(p.confidence*100)}%)`).join(', ')
+    : '';
+
+  document.getElementById('disease-desc').textContent = data.description || '';
+  fillList('list-precautions', data.precautions);
+  fillList('list-medications', data.medications);
+  fillList('list-diet', data.diet);
+  fillList('list-workout', data.workout);
+  document.getElementById('disclaimer-text').textContent = data.disclaimer;
+
+  document.getElementById('result').style.display = 'block';
+  document.getElementById('result').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+renderChips();
+</script>
+</body>
+</html>
